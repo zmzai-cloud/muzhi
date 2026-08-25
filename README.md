@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/zmzai-cloud/muzhi/actions/workflows/ci.yml/badge.svg)](https://github.com/zmzai-cloud/muzhi/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/zmzai-cloud/muzhi/actions/workflows/codeql.yml/badge.svg)](https://github.com/zmzai-cloud/muzhi/actions/workflows/codeql.yml)
-[![Release](https://img.shields.io/github/v/release/Ulanxx/muzhi)](https://github.com/zmzai-cloud/muzhi/releases/latest)
+[![Release](https://img.shields.io/github/v/release/zmzai-cloud/muzhi)](https://github.com/zmzai-cloud/muzhi/releases/latest)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
 一套面向个人创作者的、自托管的知识产品交付与会员运营底座。
