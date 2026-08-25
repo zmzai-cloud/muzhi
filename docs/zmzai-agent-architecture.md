@@ -17,45 +17,36 @@ zmzai-agent 是一个 **存储/后端无关的 Agent 编排框架**：核心包 
 
 ## 2. 整体架构
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    产品层（zmzai-agent Next.js app）              │
-│   lib/relay-agent-stream.ts  ← Relay LLM 透传（zmzai-relay）       │
-│   lib/sandbox-execution.ts   ← OpenSandbox 沙箱                   │
-│   lib/database/mongodb.ts    ← Mongo session/event store          │
-│   lib/workspaces.ts          ← Workspace 文件后端                  │
-└───────────────┬─────────────────────────────────────────────────┘
-                │ 依赖注入（RunnerDeps / FrameworkDeps）
-┌───────────────▼─────────────────────────────────────────────────┐
-│              @zmzai/agent-framework（核心包）                      │
-│                                                                  │
-│   createServer(deps) ──► AgentFramework { runner, store, ... }    │
-│                                                                  │
-│   ┌─────────────┐  ┌──────────────┐  ┌────────────────────────┐  │
-│   │  Session    │  │  Events      │  │  Agent Registry        │  │
-│   │  Store      │  │  (manifest + │  │  (内置 + workspace      │  │
-│   │  (抽象)     │  │   bus)       │  │   .zmzai/agents/*.md)  │  │
-│   └─────────────┘  └──────────────┘  └────────────────────────┘  │
-│                                                                  │
-│   ┌──────────────────────────────────────────────────────────┐   │
-│   │              SessionRunner（会话生命周期 owner）            │   │
-│   │  prompt → PI Agent loop → PartProjector → persist → 结算   │   │
-│   │              │              │             │                │   │
-│   │   PermissionEngine    Compaction     Lease + FIFO queue    │   │
-│   └──────────────────────────────────────────────────────────┘   │
-│                                                                  │
-│   ┌─────────────┐  ┌──────────────┐  ┌────────────────────────┐  │
-│   │  Tools      │  │  Adapters    │  │  PI Bridge             │  │
-│   │  (8 内置)   │  │  (FS/Subproc/│  │  (PI 事件 → Part 投影)  │  │
-│   │             │  │   OpenAI)    │  │                        │  │
-│   └─────────────┘  └──────────────┘  └────────────────────────┘  │
-└──────────────────────────────┬───────────────────────────────────┘
-                               │ 底层引擎
-                ┌──────────────▼──────────────┐
-                │  @earendil-works/pi-agent-  │
-                │  core（Agent loop）          │
-                │  + pi-ai（Model/Api 抽象）   │
-                └─────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph product["产品层（zmzai-agent Next.js app）"]
+        stream["lib/relay-agent-stream.ts<br/>Relay LLM 透传（zmzai-relay）"]
+        sandbox["lib/sandbox-execution.ts<br/>OpenSandbox 沙箱"]
+        mongo["Mongo session / event store"]
+        ws["lib/workspaces.ts<br/>Workspace 文件后端"]
+    end
+
+    subgraph core["@zmzai/agent-framework（核心包）"]
+        factory["createServer(deps) → AgentFramework"]
+        store["Session Store（抽象）"]
+        events["Events（manifest + bus）"]
+        registry["Agent Registry<br/>（内置 + .zmzai/agents/*.md）"]
+        runner["SessionRunner<br/>prompt → PI Agent loop → PartProjector → persist → 结算"]
+        perm["PermissionEngine"]
+        comp["Compaction"]
+        lease["Lease + FIFO queue"]
+        tools["Tools（8 内置 + 4 本机）"]
+        adapters["Adapters（FS / Subproc / OpenAI）"]
+        pibridge["PI Bridge（PI 事件 → Part 投影）"]
+    end
+
+    subgraph engine["底层引擎"]
+        picore["@earendil-works/pi-agent-core<br/>Agent loop"]
+        piai["pi-ai<br/>Model / Api 抽象"]
+    end
+
+    product -->|"依赖注入（RunnerDeps / FrameworkDeps）"| core
+    core -->|"底层引擎"| engine
 ```
 
 ### 分层职责
@@ -320,14 +311,11 @@ type ToolDef<TSchema> = {
 
 内置工具操作的是 **Workspace 文件**（云端后端 = Mongo 聚合视图）。但 Agent 有时需要操作**用户本机**（桌面客户端所在电脑）：本机文件、本机命令、本机通知。这是一条与 Workspace/沙箱完全独立的执行通道：
 
-```
-模型 ──local_fs_read──► zmzai-relay /api/internal/agent/local-tool
-                            │  agent-service 鉴权 + 用户有效性校验
-                            ▼
-                       zmzai-bridge /v1/users/:userId/tool
-                            │  反向隧道 WebSocket（hello/welcome/tool_request）
-                            ▼
-                       zmzai-client（桌面 Electron）→ 本地审批 + 审计 → 执行
+```mermaid
+flowchart LR
+    A["模型"] -->|"local_fs_read 等"| B["zmzai-relay<br/>/api/internal/agent/local-tool<br/>agent-service 鉴权 + 用户校验"]
+    B -->|"POST /v1/users/:userId/tool"| C["zmzai-bridge<br/>按 userId 路由"]
+    C <-->|"反向隧道 WS<br/>hello / welcome / tool_request"| D["zmzai-client<br/>本地审批 + 审计 + 执行"]
 ```
 
 **注入方式**：`SessionRunner` 的 `RunnerDeps.localTools`（`core/runtime/runner.ts`）在基础工具之后、workspace 工具之前合并；产品层在 `framework/server/context.ts` 注入 `resolveLocalTools()`（`lib/relay-local-tools.ts`）。`FW_MODE=local`（无 relay 的本地演示）不启用。
@@ -469,12 +457,16 @@ PI Agent ──streamFn──► createRelayStreamFunction({userId, taskRunId})
 
 链路涉及的全部仓库：
 
-```
-zmzai-agent（本机工具 ToolDef）
-  → zmzai-relay（local-tool 端点：鉴权 + 用户校验）
-  → zmzai-bridge（用户路由 + 限流 + 审计收集，注册表在内存）
-  → @zmzai/bridge-protocol（client↔bridge wire 契约单一来源）
-  → zmzai-client（Electron 桌面：反向隧道 + 审批 + 审计 + 路径沙箱）
+```mermaid
+flowchart TB
+    subgraph chain["下发链路"]
+        A["zmzai-agent<br/>本机工具 ToolDef"] --> B["zmzai-relay<br/>local-tool 端点：鉴权 + 用户校验"]
+        B --> C["zmzai-bridge<br/>用户路由 + 限流 + 审计收集"]
+        C <--> D["zmzai-client<br/>Electron 桌面：反向隧道 + 审批 + 审计"]
+    end
+    P["@zmzai/bridge-protocol<br/>client↔bridge wire 契约单一来源"]
+    C -. "契约" .- P
+    D -. "契约" .- P
 ```
 
 **执行边界**：沙箱在云端容器内执行、不经本机通道；本机通道只服务用户机器，客户端审批不可绕过（详见 §6.6）。

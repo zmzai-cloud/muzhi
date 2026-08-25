@@ -1,4 +1,7 @@
 import type { MDXComponents } from "mdx/types";
+import type { ReactElement } from "react";
+
+import { Mermaid } from "@/components/mermaid";
 
 /**
  * MDX 正文的元素样式映射，走杂志编辑部风格。
@@ -40,12 +43,22 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
         {...props}
       />
     ),
-    pre: (props) => (
-      <pre
-        className="mt-8 overflow-x-auto bg-[var(--ink)] p-5 font-mono text-sm leading-7 text-[var(--page)]"
-        {...props}
-      />
-    ),
+    pre: (props) => {
+      // ```mermaid 代码块 → 渲染为 mermaid 图表；其余保持代码块样式
+      const child = (
+        Array.isArray(props.children) ? props.children[0] : props.children
+      ) as ReactElement<{ className?: string; children?: unknown }> | undefined;
+      const lang = child?.props?.className;
+      if (typeof lang === "string" && lang.includes("language-mermaid")) {
+        return <Mermaid code={String(child?.props?.children ?? "")} />;
+      }
+      return (
+        <pre
+          className="mt-8 overflow-x-auto bg-[var(--ink)] p-5 font-mono text-sm leading-7 text-[var(--page)]"
+          {...props}
+        />
+      );
+    },
     hr: () => <hr className="mt-12 border-t border-[var(--line)]" />,
     table: (props) => (
       <div className="mt-8 overflow-x-auto">

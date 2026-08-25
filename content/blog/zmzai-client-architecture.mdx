@@ -36,13 +36,12 @@ draft: false
 
 ## 3. 整体架构：五段链路
 
-```
-┌────────────┐  工具循环  ┌───────────┐  /v1/users/  ┌─────────────┐  反向隧道 WS  ┌──────────────┐
-│ zmzai-agent│ ─────────► │ zmzai-relay│ ──:userId/tool─► │ zmzai-bridge │ ◄─────────────► │ zmzai-client │
-│ (工具循环)  │ local-tool │ (控制面)   │   dispatch   │ (路由+鉴权)   │  hello/welcome │ (本机 Electron)│
-└────────────┘            └───────────┘              └─────────────┘   tool_request   └──────────────┘
-                                                                      tool_result         │ fs/shell/notify
-                                                                                          │ 审批 + 审计
+```mermaid
+flowchart LR
+    A["zmzai-agent<br/>工具循环"] -->|"local-tool"| B["zmzai-relay<br/>控制面（鉴权 + 用户校验）"]
+    B -->|"POST /v1/users/:userId/tool"| C["zmzai-bridge<br/>路由 + 鉴权"]
+    C <-->|"反向隧道 WS<br/>hello / welcome / tool_request / tool_result"| D["zmzai-client<br/>本机 Electron"]
+    D -->|"fs / shell / notify"| E["用户本机<br/>审批 + 审计"]
 ```
 
 - **`zmzai-agent`**：模型工具循环。需要本机能力时调用 4 个本机工具（`lib/relay-local-tools.ts`）。
