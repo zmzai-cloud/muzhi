@@ -128,13 +128,13 @@ export function AdminOperationsPanel() {
         </div>
         <div className="flex flex-wrap gap-2 text-sm">
           <a
-            className="rounded-lg border border-[var(--line)] px-3 py-2 font-semibold"
+            className="rounded-lg border border-[var(--color-line)] px-3 py-2 font-semibold"
             href="/api/admin/export"
           >
             导出运营数据
           </a>
           <a
-            className="rounded-lg border border-[var(--line)] px-3 py-2 font-semibold"
+            className="rounded-lg border border-[var(--color-line)] px-3 py-2 font-semibold"
             href="/api/health?deep=1"
             rel="noreferrer"
             target="_blank"
@@ -144,7 +144,7 @@ export function AdminOperationsPanel() {
         </div>
       </div>
 
-      <p aria-live="polite" className="mt-3 text-sm text-[var(--muted)]">
+      <p aria-live="polite" className="mt-3 text-sm text-[var(--color-muted)]">
         {message ||
           (summary
             ? `最近检查：${new Date(summary.checkedAt).toLocaleString("zh-CN")}`
@@ -154,7 +154,7 @@ export function AdminOperationsPanel() {
       <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
         {metricLabels.map(([key, label]) => (
           <article className="surface p-4" key={key}>
-            <p className="text-sm text-[var(--muted)]">{label}</p>
+            <p className="text-sm text-[var(--color-muted)]">{label}</p>
             <p className="mt-2 text-3xl font-semibold">
               {summary?.metrics[key] ?? "—"}
             </p>
@@ -166,12 +166,12 @@ export function AdminOperationsPanel() {
         <div className="mt-3 grid gap-3 lg:grid-cols-[1fr_1.4fr]">
           <article className="surface p-5">
             <p className="font-semibold">关键结果</p>
-            <p className="mt-3 text-sm text-[var(--muted)]">
+            <p className="mt-3 text-sm text-[var(--color-muted)]">
               已发布 {summary.metrics.publishedCourses} 门课程 · 支付成功{" "}
               {summary.metrics.paidOrders} 笔 · 完课{" "}
               {summary.metrics.completedProgress} 条
             </p>
-            <p className="mt-2 text-sm text-[var(--muted)]">
+            <p className="mt-2 text-sm text-[var(--color-muted)]">
               履约收入 ¥
               {(summary.metrics.revenueInMinorUnits / 100).toFixed(2)}
             </p>
@@ -181,7 +181,7 @@ export function AdminOperationsPanel() {
             <div className="mt-3 flex flex-wrap gap-2">
               {Object.entries(summary.providers).map(([kind, readiness]) => (
                 <span
-                  className="rounded-full border border-[var(--line)] px-3 py-1 font-mono text-xs"
+                  className="rounded-full border border-[var(--color-line)] px-3 py-1 font-mono text-xs"
                   key={kind}
                 >
                   {kind}: {readiness.provider} / {readiness.status}
@@ -195,17 +195,17 @@ export function AdminOperationsPanel() {
       <div className="mt-8 flex flex-wrap items-end justify-between gap-2">
         <div>
           <p className="font-semibold">统一失败队列</p>
-          <p className="mt-1 text-sm text-[var(--muted)]">
+          <p className="mt-1 text-sm text-[var(--color-muted)]">
             支付、转码、邮件和存储故障会在此聚合；重复故障累计次数。
           </p>
         </div>
-        <p className="font-mono text-xs text-[var(--muted)]">
+        <p className="font-mono text-xs text-[var(--color-muted)]">
           {failures.length} OPEN
         </p>
       </div>
       <div className="mt-4 grid gap-3">
         {failures.length === 0 ? (
-          <div className="surface p-5 text-sm text-[var(--muted)]">
+          <div className="surface p-5 text-sm text-[var(--color-muted)]">
             当前没有未处理的主要故障。
           </div>
         ) : (
@@ -219,17 +219,17 @@ export function AdminOperationsPanel() {
                   {failure.category} · {failure.severity} · {failure.code}
                 </p>
                 <p className="mt-2 font-semibold">{failure.summary}</p>
-                <p className="mt-1 text-sm text-[var(--muted)]">
+                <p className="mt-1 text-sm text-[var(--color-muted)]">
                   {failure.detail}
                 </p>
-                <p className="mt-2 font-mono text-xs text-[var(--muted)]">
+                <p className="mt-2 font-mono text-xs text-[var(--color-muted)]">
                   {failure.provider ?? "internal"} · 累计{" "}
                   {failure.occurrenceCount} 次 ·{" "}
                   {new Date(failure.lastOccurredAt).toLocaleString("zh-CN")}
                 </p>
               </div>
               <button
-                className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-semibold"
+                className="rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm font-semibold"
                 disabled={busyId === failure.id}
                 onClick={() => void resolveFailure(failure.id)}
                 type="button"

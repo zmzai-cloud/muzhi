@@ -36,7 +36,7 @@ export default async function AdminPage() {
         <h1 className="mt-3 text-4xl font-semibold tracking-[-0.045em]">
           课程交付后台
         </h1>
-        <p className="mt-3 text-[var(--muted)]">
+        <p className="mt-3 text-[var(--color-muted)]">
           当前管理员：{user.email}
         </p>
 

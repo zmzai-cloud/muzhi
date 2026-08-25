@@ -10,9 +10,9 @@ interface ApiPayload {
 }
 
 const inputClass =
-  "focus-ring rounded-lg border border-[var(--line)] bg-[var(--page)] px-4 py-3";
+  "focus-ring rounded-lg border border-[var(--color-line)] bg-[var(--color-paper)] px-4 py-3";
 const buttonClass =
-  "focus-ring rounded-lg bg-[var(--accent)] px-5 py-3 font-semibold text-[var(--accent-ink)] disabled:opacity-60";
+  "focus-ring rounded-lg bg-[var(--color-accent)] px-5 py-3 font-semibold text-[var(--color-accent-ink)] disabled:opacity-60";
 
 async function postJson(path: string, body: unknown): Promise<{
   ok: boolean;
@@ -91,11 +91,11 @@ export function RegisterForm() {
           required
           type="password"
         />
-        <span className="font-normal text-[var(--muted)]">
+        <span className="font-normal text-[var(--color-muted)]">
           至少 12 位，同时包含字母和数字。
         </span>
       </label>
-      <p aria-live="polite" className="text-sm text-[var(--muted)]">
+      <p aria-live="polite" className="text-sm text-[var(--color-muted)]">
         {status}
       </p>
       <button className={buttonClass} disabled={busy} type="submit">
@@ -126,7 +126,7 @@ export function ResendVerificationForm() {
         注册邮箱
         <input className={inputClass} name="email" required type="email" />
       </label>
-      <p aria-live="polite" className="text-sm text-[var(--muted)]">
+      <p aria-live="polite" className="text-sm text-[var(--color-muted)]">
         {status}
       </p>
       <button className={buttonClass} disabled={busy} type="submit">
@@ -160,7 +160,7 @@ export function VerifyEmailForm() {
 
   return (
     <div className="surface mt-8 grid gap-5 p-7">
-      <p className="text-sm leading-6 text-[var(--muted)]">
+      <p className="text-sm leading-6 text-[var(--color-muted)]">
         点击后会验证当前链接。验证链接只能使用一次。
       </p>
       <p aria-live="polite" className="text-sm text-red-700">
@@ -199,7 +199,7 @@ export function ForgotPasswordForm() {
         邮箱
         <input className={inputClass} name="email" required type="email" />
       </label>
-      <p aria-live="polite" className="text-sm text-[var(--muted)]">
+      <p aria-live="polite" className="text-sm text-[var(--color-muted)]">
         {status}
       </p>
       <button className={buttonClass} disabled={busy} type="submit">
@@ -295,7 +295,7 @@ export function ChangePasswordForm() {
           type="password"
         />
       </label>
-      <p aria-live="polite" className="text-sm text-[var(--muted)]">
+      <p aria-live="polite" className="text-sm text-[var(--color-muted)]">
         {status}
       </p>
       <button className={buttonClass} disabled={busy} type="submit">
@@ -332,7 +332,7 @@ export function RedeemInvitationForm() {
           required
         />
       </label>
-      <p aria-live="polite" className="text-sm text-[var(--muted)]">
+      <p aria-live="polite" className="text-sm text-[var(--color-muted)]">
         {status}
       </p>
       <button className={buttonClass} disabled={busy} type="submit">

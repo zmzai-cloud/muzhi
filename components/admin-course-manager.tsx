@@ -253,16 +253,16 @@ export function AdminCourseManager({
   }
 
   const inputClass =
-    "focus-ring w-full rounded-lg border border-[var(--line)] bg-[var(--page)] px-3.5 py-2.5";
+    "focus-ring w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-paper)] px-3.5 py-2.5";
 
   return (
     <div className="mt-10 grid gap-8">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <p aria-live="polite" className="text-sm text-[var(--muted)]">
+        <p aria-live="polite" className="text-sm text-[var(--color-muted)]">
           {message || "所有写操作都要求管理员会话和同源请求。"}
         </p>
         <button
-          className="focus-ring rounded-lg border border-[var(--line)] px-4 py-2 text-sm"
+          className="focus-ring rounded-lg border border-[var(--color-line)] px-4 py-2 text-sm"
           disabled={busy}
           onClick={() => void logout()}
           type="button"
@@ -308,7 +308,7 @@ export function AdminCourseManager({
             <option value="member">会员</option>
           </select>
           <button
-            className="rounded-lg bg-[var(--accent)] px-4 py-2.5 font-semibold text-[var(--accent-ink)]"
+            className="rounded-lg bg-[var(--color-accent)] px-4 py-2.5 font-semibold text-[var(--color-accent-ink)]"
             disabled={busy}
             type="submit"
           >
@@ -386,7 +386,7 @@ export function AdminCourseManager({
             type="number"
           />
           <button
-            className="rounded-lg bg-[var(--accent)] px-4 py-2.5 font-semibold text-[var(--accent-ink)]"
+            className="rounded-lg bg-[var(--color-accent)] px-4 py-2.5 font-semibold text-[var(--color-accent-ink)]"
             disabled={busy || series.length === 0}
             type="submit"
           >
@@ -400,12 +400,12 @@ export function AdminCourseManager({
         <div className="mt-5 grid gap-3">
           {courses.map((course) => (
             <div
-              className="grid gap-4 rounded-xl border border-[var(--line)] bg-[var(--page)] p-4 md:grid-cols-[1fr_auto]"
+              className="grid gap-4 rounded-xl border border-[var(--color-line)] bg-[var(--color-paper)] p-4 md:grid-cols-[1fr_auto]"
               key={course.id}
             >
               <div>
                 <p className="font-semibold">{course.title}</p>
-                <p className="mt-1 font-mono text-xs text-[var(--muted)]">
+                <p className="mt-1 font-mono text-xs text-[var(--color-muted)]">
                   {course.status} / {course.accessLevel} /{" "}
                   {course.contentType === "document"
                     ? "文档课"
@@ -415,7 +415,7 @@ export function AdminCourseManager({
                 </p>
               </div>
               <button
-                className="rounded-lg border border-[var(--line)] px-4 py-2 text-sm font-semibold disabled:opacity-50"
+                className="rounded-lg border border-[var(--color-line)] px-4 py-2 text-sm font-semibold disabled:opacity-50"
                 disabled={busy || course.status === "published"}
                 onClick={() => publishCourse(course.id)}
                 type="button"
@@ -429,7 +429,7 @@ export function AdminCourseManager({
 
       <section className="surface p-6">
         <h2 className="text-xl font-semibold">文档课章节</h2>
-        <p className="mt-1 text-sm text-[var(--muted)]">
+        <p className="mt-1 text-sm text-[var(--color-muted)]">
           为文档课添加章节。勾选「试读」的章节对未购买用户公开。
         </p>
         <form className="mt-5 grid gap-4" onSubmit={submitChapter}>
@@ -477,7 +477,7 @@ export function AdminCourseManager({
             设为试读章（未购买用户可见）
           </label>
           <button
-            className="rounded-lg bg-[var(--accent)] px-4 py-2.5 font-semibold text-[var(--accent-ink)]"
+            className="rounded-lg bg-[var(--color-accent)] px-4 py-2.5 font-semibold text-[var(--color-accent-ink)]"
             disabled={
               busy ||
               courses.filter((course) => course.contentType === "document")
@@ -514,7 +514,7 @@ export function AdminCourseManager({
             type="file"
           />
           <button
-            className="rounded-lg bg-[var(--accent)] px-4 py-2.5 font-semibold text-[var(--accent-ink)]"
+            className="rounded-lg bg-[var(--color-accent)] px-4 py-2.5 font-semibold text-[var(--color-accent-ink)]"
             disabled={busy || courses.length === 0}
             type="submit"
           >
@@ -575,7 +575,7 @@ export function AdminCourseManager({
             />
           </div>
           <button
-            className="rounded-lg bg-[var(--accent)] px-4 py-2.5 font-semibold text-[var(--accent-ink)]"
+            className="rounded-lg bg-[var(--color-accent)] px-4 py-2.5 font-semibold text-[var(--color-accent-ink)]"
             disabled={busy || courses.length === 0}
             type="submit"
           >

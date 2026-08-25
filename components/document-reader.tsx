@@ -131,18 +131,18 @@ export function DocumentReader({
     <div className="mt-9 grid gap-10 lg:grid-cols-[16rem_1fr]">
       {/* 章节目录 */}
       <nav aria-label="章节目录" className="lg:sticky lg:top-24 lg:self-start">
-        <p className="eyebrow text-[var(--muted)]">目录</p>
-        <ol className="mt-4 border-t border-[var(--line)]">
+        <p className="eyebrow text-[var(--color-muted)]">目录</p>
+        <ol className="mt-4 border-t border-[var(--color-line)]">
           {chapters.map((chapter, index) => {
             const isActive = chapter.chapterId === activeId;
             const isRead = readIds.has(chapter.chapterId);
             return (
               <li key={chapter.chapterId}>
                 <button
-                  className={`focus-ring flex w-full items-baseline gap-3 border-b border-[var(--line)] px-2 py-3 text-left transition-colors ${
+                  className={`focus-ring flex w-full items-baseline gap-3 border-b border-[var(--color-line)] px-2 py-3 text-left transition-colors ${
                     isActive
-                      ? "bg-[var(--accent)] font-bold text-[var(--accent-ink)]"
-                      : "hover:bg-[var(--surface)]"
+                      ? "bg-[var(--color-accent)] font-bold text-[var(--color-accent-ink)]"
+                      : "hover:bg-[var(--color-surface)]"
                   }`}
                   onClick={() => selectChapter(chapter.chapterId)}
                   type="button"
@@ -179,12 +179,12 @@ export function DocumentReader({
             </h2>
 
             {denied && !hasAccess ? (
-              <div className="mt-8 border-t-2 border-[var(--rule)] pt-8">
+              <div className="mt-8 border-t-2 border-[var(--color-rule)] pt-8">
                 <p className="eyebrow text-[var(--accent-readable)]">付费内容</p>
                 <h3 className="mt-4 text-2xl font-bold">
                   这一章需要购买后才能阅读
                 </h3>
-                <p className="mt-3 max-w-[32rem] leading-7 text-[var(--muted)]">
+                <p className="mt-3 max-w-[32rem] leading-7 text-[var(--color-muted)]">
                   试读内容到此为止。购买本课程即可解锁全部 {chapters.length}{" "}
                   章，并同步保存你的阅读进度。
                 </p>
@@ -200,7 +200,7 @@ export function DocumentReader({
                   </div>
                 ) : (
                   <a
-                    className="focus-ring mt-6 inline-block bg-[var(--ink)] px-6 py-3 font-bold text-[var(--page)]"
+                    className="focus-ring mt-6 inline-block bg-[var(--color-ink)] px-6 py-3 font-bold text-[var(--color-paper)]"
                     href="/pricing"
                   >
                     去购买
@@ -208,24 +208,24 @@ export function DocumentReader({
                 )}
               </div>
             ) : loading ? (
-              <p className="mt-8 text-[var(--muted)]">正在加载正文…</p>
+              <p className="mt-8 text-[var(--color-muted)]">正在加载正文…</p>
             ) : activeBody !== null ? (
               <div className="mt-8">
                 <ChapterMarkdown body={activeBody} />
               </div>
             ) : (
-              <p className="mt-8 text-[var(--muted)]">这一章暂时没有内容。</p>
+              <p className="mt-8 text-[var(--color-muted)]">这一章暂时没有内容。</p>
             )}
 
             {/* 上一章 / 下一章 */}
-            <nav className="mt-14 grid gap-px border-t-2 border-[var(--rule)] pt-6 sm:grid-cols-2">
+            <nav className="mt-14 grid gap-px border-t-2 border-[var(--color-rule)] pt-6 sm:grid-cols-2">
               {previous ? (
                 <button
                   className="focus-ring group py-3 text-left"
                   onClick={() => selectChapter(previous.chapterId)}
                   type="button"
                 >
-                  <span className="eyebrow text-[var(--muted)]">上一章</span>
+                  <span className="eyebrow text-[var(--color-muted)]">上一章</span>
                   <span className="mt-1 block font-bold group-hover:underline">
                     {previous.title}
                   </span>
@@ -239,7 +239,7 @@ export function DocumentReader({
                   onClick={() => selectChapter(next.chapterId)}
                   type="button"
                 >
-                  <span className="eyebrow text-[var(--muted)]">下一章</span>
+                  <span className="eyebrow text-[var(--color-muted)]">下一章</span>
                   <span className="mt-1 block font-bold group-hover:underline">
                     {next.title}
                   </span>
@@ -250,7 +250,7 @@ export function DocumentReader({
             </nav>
           </>
         ) : (
-          <p className="text-[var(--muted)]">这门课还没有章节。</p>
+          <p className="text-[var(--color-muted)]">这门课还没有章节。</p>
         )}
       </article>
     </div>
@@ -274,14 +274,14 @@ function MarkdownBlock({ block }: { block: string }) {
   if (trimmed.startsWith("```")) {
     const code = trimmed.replace(/^```[a-z]*\n?/, "").replace(/```$/, "");
     return (
-      <pre className="mt-8 overflow-x-auto bg-[var(--ink)] p-5 font-mono text-sm leading-7 text-[var(--page)]">
+      <pre className="mt-8 overflow-x-auto bg-[var(--color-ink)] p-5 font-mono text-sm leading-7 text-[var(--color-paper)]">
         <code>{code}</code>
       </pre>
     );
   }
   if (trimmed.startsWith("## ")) {
     return (
-      <h3 className="mt-12 border-t-2 border-[var(--rule)] pt-6 text-2xl font-black tracking-[-0.02em]">
+      <h3 className="mt-12 border-t-2 border-[var(--color-rule)] pt-6 text-2xl font-black tracking-[-0.02em]">
         {trimmed.slice(3)}
       </h3>
     );
@@ -293,7 +293,7 @@ function MarkdownBlock({ block }: { block: string }) {
   }
   if (trimmed.startsWith("> ")) {
     return (
-      <blockquote className="mt-8 border-l-4 border-[var(--rule)] bg-[var(--surface)] py-2 pl-6 italic text-[var(--muted)]">
+      <blockquote className="mt-8 border-l-4 border-[var(--color-rule)] bg-[var(--color-surface)] py-2 pl-6 italic text-[var(--color-muted)]">
         {trimmed.slice(2)}
       </blockquote>
     );
@@ -319,7 +319,7 @@ function renderInline(text: string) {
     if (part.startsWith("`") && part.endsWith("`")) {
       return (
         <code
-          className="rounded bg-[var(--surface-strong)] px-1.5 py-0.5 font-mono text-[0.9em]"
+          className="rounded bg-[var(--color-surface-strong)] px-1.5 py-0.5 font-mono text-[0.9em]"
           key={index}
         >
           {part.slice(1, -1)}

@@ -22,7 +22,7 @@ export default async function RedeemPage() {
           <h1 className="text-4xl font-semibold tracking-[-0.045em]">
             兑换权益
           </h1>
-          <p className="mt-3 text-[var(--muted)]">
+          <p className="mt-3 text-[var(--color-muted)]">
             邀请码可以授予全站会员、指定系列或指定单课权益。
           </p>
           <RedeemInvitationForm />

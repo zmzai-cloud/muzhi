@@ -70,14 +70,14 @@ export function AdminOrderManager() {
             订单与权益发放
           </h2>
         </div>
-        <p aria-live="polite" className="text-sm text-[var(--muted)]">
+        <p aria-live="polite" className="text-sm text-[var(--color-muted)]">
           {message || `${orders.length} 笔最近订单`}
         </p>
       </div>
 
       <div className="mt-6 grid gap-3">
         {orders.length === 0 ? (
-          <div className="surface p-6 text-[var(--muted)]">暂无订单。</div>
+          <div className="surface p-6 text-[var(--color-muted)]">暂无订单。</div>
         ) : (
           orders.map((order) => (
             <article
@@ -85,13 +85,13 @@ export function AdminOrderManager() {
               key={order.id}
             >
               <div>
-                <p className="font-mono text-xs text-[var(--muted)]">
+                <p className="font-mono text-xs text-[var(--color-muted)]">
                   {order.orderNumber}
                 </p>
                 <p className="mt-2 font-semibold">
                   {order.items.map((item) => item.title).join("、")}
                 </p>
-                <p className="mt-1 text-sm text-[var(--muted)]">
+                <p className="mt-1 text-sm text-[var(--color-muted)]">
                   {order.user?.email ?? "用户已不存在"}
                 </p>
               </div>
@@ -110,7 +110,7 @@ export function AdminOrderManager() {
               <div className="flex gap-2">
                 {order.provider === "manual" && order.status === "pending" ? (
                   <button
-                    className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-semibold"
+                    className="rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm font-semibold"
                     disabled={busyId === order.id}
                     onClick={() => void mutate(order.id, "confirm")}
                     type="button"
@@ -121,7 +121,7 @@ export function AdminOrderManager() {
                 {order.status === "paid" &&
                 order.fulfillmentStatus === "failed" ? (
                   <button
-                    className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-semibold"
+                    className="rounded-lg border border-[var(--color-line)] px-3 py-2 text-sm font-semibold"
                     disabled={busyId === order.id}
                     onClick={() => void mutate(order.id, "retry")}
                     type="button"

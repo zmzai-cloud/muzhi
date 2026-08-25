@@ -59,7 +59,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       <SiteHeader site={site} />
       <main className="page-shell max-w-[46rem] py-16 lg:py-20">
         <Link
-          className="eyebrow text-[var(--muted)] transition-colors hover:text-[var(--ink)]"
+          className="eyebrow text-[var(--color-muted)] transition-colors hover:text-[var(--color-ink)]"
           href="/blog"
         >
           ← 返回博客
@@ -67,10 +67,10 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
         <article className="mt-10">
           <div className="flex flex-wrap items-center gap-4">
-            <time className="eyebrow text-[var(--muted)]">{post.date}</time>
+            <time className="eyebrow text-[var(--color-muted)]">{post.date}</time>
             {post.tags.map((tag) => (
               <span
-                className="eyebrow bg-[var(--accent)] px-2 py-1 text-[var(--accent-ink)]"
+                className="eyebrow bg-[var(--color-accent)] px-2 py-1 text-[var(--color-accent-ink)]"
                 key={tag}
               >
                 {tag}
@@ -81,7 +81,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           <h1 className="mt-6 text-4xl font-black leading-tight tracking-[-0.03em] sm:text-5xl">
             {post.title}
           </h1>
-          <p className="mt-6 border-t-2 border-[var(--rule)] pt-6 text-xl leading-9 text-[var(--muted)]">
+          <p className="mt-6 border-t-2 border-[var(--color-rule)] pt-6 text-xl leading-9 text-[var(--color-muted)]">
             {post.summary}
           </p>
 
@@ -90,13 +90,13 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           </div>
         </article>
 
-        <nav className="mt-20 grid gap-px border-t-2 border-[var(--rule)] pt-8 sm:grid-cols-2">
+        <nav className="mt-20 grid gap-px border-t-2 border-[var(--color-rule)] pt-8 sm:grid-cols-2">
           {older ? (
             <Link
               className="focus-ring group py-4"
               href={`/blog/${older.slug}`}
             >
-              <span className="eyebrow text-[var(--muted)]">上一篇</span>
+              <span className="eyebrow text-[var(--color-muted)]">上一篇</span>
               <span className="mt-2 block font-bold group-hover:underline">
                 {older.title}
               </span>
@@ -109,7 +109,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
               className="focus-ring group py-4 sm:text-right"
               href={`/blog/${newer.slug}`}
             >
-              <span className="eyebrow text-[var(--muted)]">下一篇</span>
+              <span className="eyebrow text-[var(--color-muted)]">下一篇</span>
               <span className="mt-2 block font-bold group-hover:underline">
                 {newer.title}
               </span>

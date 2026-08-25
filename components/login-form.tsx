@@ -51,7 +51,7 @@ export function LoginForm() {
         </label>
         <input
           autoComplete="email"
-          className="focus-ring rounded-lg border border-[var(--line)] bg-[var(--page)] px-4 py-3"
+          className="focus-ring rounded-lg border border-[var(--color-line)] bg-[var(--color-paper)] px-4 py-3"
           id="email"
           name="email"
           required
@@ -65,7 +65,7 @@ export function LoginForm() {
         </label>
         <input
           autoComplete="current-password"
-          className="focus-ring rounded-lg border border-[var(--line)] bg-[var(--page)] px-4 py-3"
+          className="focus-ring rounded-lg border border-[var(--color-line)] bg-[var(--color-paper)] px-4 py-3"
           id="password"
           name="password"
           required
@@ -78,7 +78,7 @@ export function LoginForm() {
       ) : null}
 
       <button
-        className="focus-ring rounded-lg bg-[var(--accent)] px-5 py-3 font-semibold text-[var(--accent-ink)] disabled:opacity-60"
+        className="focus-ring rounded-lg bg-[var(--color-accent)] px-5 py-3 font-semibold text-[var(--color-accent-ink)] disabled:opacity-60"
         disabled={submitting}
         type="submit"
       >

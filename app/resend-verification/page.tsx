@@ -12,7 +12,7 @@ export default function ResendVerificationPage() {
           <h1 className="text-4xl font-semibold tracking-[-0.045em]">
             重发验证邮件
           </h1>
-          <p className="mt-3 text-[var(--muted)]">
+          <p className="mt-3 text-[var(--color-muted)]">
             为避免泄露账号状态，无论邮箱是否存在都会返回相同提示。
           </p>
           <ResendVerificationForm />

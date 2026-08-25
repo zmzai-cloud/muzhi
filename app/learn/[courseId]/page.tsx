@@ -126,7 +126,7 @@ export default async function LearnPage({
       <SiteHeader site={site} />
       <main className="page-shell py-12">
         <Link
-          className="focus-ring rounded-md text-sm text-[var(--muted)] hover:text-[var(--ink)]"
+          className="focus-ring rounded-md text-sm text-[var(--color-muted)] hover:text-[var(--color-ink)]"
           href="/courses"
         >
           返回课程
@@ -146,7 +146,7 @@ export default async function LearnPage({
             <h1 className="mt-3 text-4xl font-semibold tracking-[-0.045em] sm:text-5xl">
               {course.title}
             </h1>
-            <p className="mt-4 max-w-3xl leading-7 text-[var(--muted)]">
+            <p className="mt-4 max-w-3xl leading-7 text-[var(--color-muted)]">
               {course.summary}
             </p>
 
@@ -165,11 +165,11 @@ export default async function LearnPage({
               ) : !allowed ? (
                 <div className="surface p-8">
                   <h2 className="text-xl font-semibold">这节课需要有效权益</h2>
-                  <p className="mt-2 text-[var(--muted)]">
+                  <p className="mt-2 text-[var(--color-muted)]">
                     登录后系统会检查全站会员或单课购买记录。
                   </p>
                   <Link
-                    className="focus-ring mt-5 inline-block rounded-lg bg-[var(--accent)] px-4 py-2.5 font-semibold text-[var(--accent-ink)]"
+                    className="focus-ring mt-5 inline-block rounded-lg bg-[var(--color-accent)] px-4 py-2.5 font-semibold text-[var(--color-accent-ink)]"
                     href={`/login?next=/learn/${courseId}`}
                   >
                     登录
@@ -184,7 +184,7 @@ export default async function LearnPage({
               ) : (
                 <div className="surface p-8">
                   <h2 className="text-xl font-semibold">视频尚未就绪</h2>
-                  <p className="mt-2 text-[var(--muted)]">
+                  <p className="mt-2 text-[var(--color-muted)]">
                     发布前媒体校验会阻止缺少视频文件的课程上线。
                   </p>
                 </div>
@@ -197,16 +197,16 @@ export default async function LearnPage({
               <div className="surface p-5">
                 <h2 className="font-semibold">课程资料</h2>
                 {!allowed ? (
-                  <p className="mt-3 text-sm text-[var(--muted)]">
+                  <p className="mt-3 text-sm text-[var(--color-muted)]">
                     获得课程权益后显示资料。
                   </p>
                 ) : materials.length === 0 ? (
-                  <p className="mt-3 text-sm text-[var(--muted)]">暂无资料</p>
+                  <p className="mt-3 text-sm text-[var(--color-muted)]">暂无资料</p>
                 ) : (
                   <div className="mt-4 grid gap-2">
                     {materials.map((material) => (
                       <a
-                        className="focus-ring rounded-lg border border-[var(--line)] bg-[var(--page)] px-4 py-3 text-sm font-medium hover:border-[var(--accent)]"
+                        className="focus-ring rounded-lg border border-[var(--color-line)] bg-[var(--color-paper)] px-4 py-3 text-sm font-medium hover:border-[var(--color-accent)]"
                         href={`/api/materials/${material._id.toString()}/download`}
                         key={material._id.toString()}
                       >

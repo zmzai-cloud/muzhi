@@ -42,7 +42,7 @@ export default async function OrdersPage() {
         <h1 className="text-5xl font-semibold tracking-[-0.05em]">
           我的订单
         </h1>
-        <p className="mt-4 text-[var(--muted)]">{user.email}</p>
+        <p className="mt-4 text-[var(--color-muted)]">{user.email}</p>
 
         <div className="mt-10 grid gap-4">
           {orders.length === 0 ? (
@@ -66,13 +66,13 @@ export default async function OrdersPage() {
                   key={order._id.toString()}
                 >
                   <div>
-                    <p className="font-mono text-xs text-[var(--muted)]">
+                    <p className="font-mono text-xs text-[var(--color-muted)]">
                       {order.orderNumber}
                     </p>
                     <h2 className="mt-2 text-xl font-semibold">
                       {orderItems.map((item) => item.title).join("、")}
                     </h2>
-                    <p className="mt-2 text-sm text-[var(--muted)]">
+                    <p className="mt-2 text-sm text-[var(--color-muted)]">
                       {order.provider} / {order.paymentMethod} ·{" "}
                       {order.createdAt.toLocaleString("zh-CN")}
                     </p>

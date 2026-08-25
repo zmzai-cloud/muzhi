@@ -116,7 +116,7 @@ export function VideoPlayer({
         src={`/api/media/${assetId}/stream`}
         title={title}
       />
-      <p aria-live="polite" className="mt-3 text-sm text-[var(--muted)]">
+      <p aria-live="polite" className="mt-3 text-sm text-[var(--color-muted)]">
         {status}
       </p>
     </div>

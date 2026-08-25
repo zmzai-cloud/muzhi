@@ -152,7 +152,7 @@ export function CheckoutPanel({
     return (
       <section className="surface mt-10 p-7">
         <h2 className="text-xl font-semibold">暂无可售商品</h2>
-        <p className="mt-2 text-[var(--muted)]">
+        <p className="mt-2 text-[var(--color-muted)]">
           请先运行 Demo Seed，或在服务端商品配置中启用商品。
         </p>
       </section>
@@ -170,7 +170,7 @@ export function CheckoutPanel({
           <button
             className={`surface focus-ring p-6 text-left transition-transform hover:-translate-y-0.5 ${
               selectedProduct === product.id
-                ? "outline outline-2 outline-[var(--accent)]"
+                ? "outline outline-2 outline-[var(--color-accent)]"
                 : ""
             }`}
             key={product.id}
@@ -183,7 +183,7 @@ export function CheckoutPanel({
             <span className="mt-3 block text-2xl font-semibold">
               {product.title}
             </span>
-            <span className="mt-2 block leading-7 text-[var(--muted)]">
+            <span className="mt-2 block leading-7 text-[var(--color-muted)]">
               {product.description}
             </span>
             <span className="mt-5 block text-xl font-semibold">
@@ -202,7 +202,7 @@ export function CheckoutPanel({
         <label className="mt-6 grid gap-2 text-sm">
           支付方式
           <select
-            className="focus-ring rounded-lg border border-[var(--line)] bg-[var(--page)] px-3.5 py-2.5"
+            className="focus-ring rounded-lg border border-[var(--color-line)] bg-[var(--color-paper)] px-3.5 py-2.5"
             onChange={(event) => setPaymentMethod(event.target.value)}
             value={paymentMethod}
           >
@@ -216,7 +216,7 @@ export function CheckoutPanel({
 
         {signedIn ? (
           <button
-            className="mt-5 w-full rounded-lg bg-[var(--accent)] px-4 py-3 font-semibold text-[var(--accent-ink)]"
+            className="mt-5 w-full rounded-lg bg-[var(--color-accent)] px-4 py-3 font-semibold text-[var(--color-accent-ink)]"
             disabled={busy || !selectedProduct || !paymentMethod}
             onClick={() => void createOrder()}
             type="button"
@@ -225,20 +225,20 @@ export function CheckoutPanel({
           </button>
         ) : (
           <Link
-            className="mt-5 block rounded-lg bg-[var(--accent)] px-4 py-3 text-center font-semibold text-[var(--accent-ink)]"
+            className="mt-5 block rounded-lg bg-[var(--color-accent)] px-4 py-3 text-center font-semibold text-[var(--color-accent-ink)]"
             href="/login?next=/pricing"
           >
             登录后购买
           </Link>
         )}
 
-        <p aria-live="polite" className="mt-4 text-sm text-[var(--muted)]">
+        <p aria-live="polite" className="mt-4 text-sm text-[var(--color-muted)]">
           {message || "浏览器不会提交或决定最终金额。"}
         </p>
 
         {result ? (
-          <div className="mt-6 border-t border-[var(--line)] pt-6">
-            <p className="font-mono text-xs text-[var(--muted)]">
+          <div className="mt-6 border-t border-[var(--color-line)] pt-6">
+            <p className="font-mono text-xs text-[var(--color-muted)]">
               {result.order.orderNumber}
             </p>
             <p className="mt-2 text-sm">
@@ -257,14 +257,14 @@ export function CheckoutPanel({
             ) : null}
 
             {result.checkout.instructions ? (
-              <p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-[var(--muted)]">
+              <p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-[var(--color-muted)]">
                 {result.checkout.instructions}
               </p>
             ) : null}
 
             {result.checkout.paymentUrl ? (
               <a
-                className="mt-4 block rounded-lg border border-[var(--line)] px-4 py-2.5 text-center text-sm font-semibold"
+                className="mt-4 block rounded-lg border border-[var(--color-line)] px-4 py-2.5 text-center text-sm font-semibold"
                 href={result.checkout.paymentUrl}
                 rel="noreferrer"
                 target="_blank"
@@ -276,7 +276,7 @@ export function CheckoutPanel({
             {result.checkout.mode === "mock" &&
             orderStatus !== "fulfilled" ? (
               <button
-                className="mt-4 w-full rounded-lg border border-[var(--line)] px-4 py-2.5 text-sm font-semibold"
+                className="mt-4 w-full rounded-lg border border-[var(--color-line)] px-4 py-2.5 text-sm font-semibold"
                 disabled={busy}
                 onClick={() => void confirmMockPayment()}
                 type="button"

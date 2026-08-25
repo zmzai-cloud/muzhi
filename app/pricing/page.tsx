@@ -23,13 +23,13 @@ export default async function PricingPage() {
     <>
       <SiteHeader site={site} />
       <main className="page-shell py-16 lg:py-20">
-        <p className="eyebrow text-[var(--muted)]">
+        <p className="eyebrow text-[var(--color-muted)]">
           {provider.name.toUpperCase()} PAYMENT
         </p>
         <h1 className="headline mt-6 text-[clamp(3rem,9vw,7rem)]">
           两种买法
         </h1>
-        <p className="mt-8 max-w-[38rem] border-t-2 border-[var(--rule)] pt-6 text-xl leading-9">
+        <p className="mt-8 max-w-[38rem] border-t-2 border-[var(--color-rule)] pt-6 text-xl leading-9">
           按年订阅解锁全部内容，或者只买你想看的那一门。买了就是你的。
         </p>
 
