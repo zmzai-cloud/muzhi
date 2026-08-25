@@ -1,13 +1,13 @@
 # Muzhi · zmzai.cloud
 
-[![CI](https://github.com/Ulanxx/muzhi/actions/workflows/ci.yml/badge.svg)](https://github.com/Ulanxx/muzhi/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/Ulanxx/muzhi/actions/workflows/codeql.yml/badge.svg)](https://github.com/Ulanxx/muzhi/actions/workflows/codeql.yml)
-[![Release](https://img.shields.io/github/v/release/Ulanxx/muzhi)](https://github.com/Ulanxx/muzhi/releases/latest)
+[![CI](https://github.com/zmzai-cloud/muzhi/actions/workflows/ci.yml/badge.svg)](https://github.com/zmzai-cloud/muzhi/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/zmzai-cloud/muzhi/actions/workflows/codeql.yml/badge.svg)](https://github.com/zmzai-cloud/muzhi/actions/workflows/codeql.yml)
+[![Release](https://img.shields.io/github/v/release/Ulanxx/muzhi)](https://github.com/zmzai-cloud/muzhi/releases/latest)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
 一套面向个人创作者的、自托管的知识产品交付与会员运营底座。
 
-本项目基于 [mdldm-knowledge-kit](https://github.com/CzzzzzzJ/mdldm-knowledge-kit)（Apache-2.0）二次开发，在原项目核心底座上新增了 zmzai.cloud 牧之品牌视觉、免费免登博客、文档型付费课程等功能。原项目由麦当 mdldm 发起。
+本项目基于 [mdldm-knowledge-kit](https://github.com/CzzzzzzJ/mdldm-knowledge-kit)（Apache-2.0）二次开发，在原项目核心底座上新增了 zmzai.cloud 知末智云 · 牧之品牌视觉、免费免登博客、文档型付费课程等功能。原项目由麦当 mdldm 发起。
 
 > 当前版本：`v0.1.0 / Phase 6 public release`
 >
@@ -90,7 +90,7 @@
 ## 快速启动
 
 ```bash
-git clone https://github.com/Ulanxx/muzhi.git
+git clone https://github.com/zmzai-cloud/muzhi.git
 cd muzhi
 npm ci
 cp .env.example .env.local
