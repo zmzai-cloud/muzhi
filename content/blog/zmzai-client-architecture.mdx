@@ -1,0 +1,237 @@
+---
+title: "zmzai 客户端架构：云端 Agent 如何安全地操作你的本机"
+date: 2026-08-25
+summary: "从反向隧道、HMAC+ECDSA 握手、用户路由、审批审计到 relay/agent 打通——拆解 zmzai-client / zmzai-bridge / bridge-protocol 三件套的完整设计。"
+tags: ["客户端架构", "技术方案"]
+draft: false
+---
+
+> 日期：2026-08-25
+> 范围：`zmzai-client`（Electron 桌面）+ `zmzai-bridge`（云端桥接服务）+ `@zmzai/bridge-protocol`（协议契约包），以及 `zmzai-relay` / `zmzai-agent` 的接入层
+> 定位：本文是「云端 Agent 操作用户本机」这条链路的完整技术说明。所有设计决策均标注了真实源码位置。
+
+---
+
+## 1. 一句话定位
+
+**`zmzai-client` 是云端 Agent 在用户本机上的受限执行端点**：Agent 需要读本机文件、跑本机命令、发本机通知时，经 `zmzai-relay → zmzai-bridge → zmzai-client` 三级下发，由用户在本地**审批 + 审计**后执行，结果原路返回。
+
+它与云端沙箱（`zmzai-sandbox`）的边界从一开始就划清：**沙箱的代码/命令在云端容器内执行，不经这条链路；这条链路只服务「用户自己的机器」**——沙箱是"给 Agent 一个隔离环境"，客户端是"给 Agent 一对用户的手"。
+
+---
+
+## 2. 为什么需要它：一条被 NAT 挡住的链路
+
+云端 Agent 天然在云端，但用户的工作产物（文件、配置、进程、通知）在用户自己的电脑上。直接让云端连本机有两个硬障碍：
+
+1. **用户机器在 NAT/防火墙后**，没有公网可达地址，云端无法主动连入；
+2. 就算连得进，**也没有人审批**——一个云端进程静默读走你磁盘上的所有文件，是不可接受的。
+
+所以架构从第一天就定了两个原则：
+
+- **反向隧道**：客户端主动建立**出站** WebSocket 连云端（`ws://`/`wss://`），云端永远不主动连客户端——规避 NAT 与暴露面（`src/bridge/bridge-client.ts`）。
+- **审批不可绕过**：云端只能"下发请求"，真正的执行、审批、审计都在用户桌面客户端本地完成。云端被攻破也无法绕过本地审批。
+
+---
+
+## 3. 整体架构：五段链路
+
+```
+┌────────────┐  工具循环  ┌───────────┐  /v1/users/  ┌─────────────┐  反向隧道 WS  ┌──────────────┐
+│ zmzai-agent│ ─────────► │ zmzai-relay│ ──:userId/tool─► │ zmzai-bridge │ ◄─────────────► │ zmzai-client │
+│ (工具循环)  │ local-tool │ (控制面)   │   dispatch   │ (路由+鉴权)   │  hello/welcome │ (本机 Electron)│
+└────────────┘            └───────────┘              └─────────────┘   tool_request   └──────────────┘
+                                                                      tool_result         │ fs/shell/notify
+                                                                                          │ 审批 + 审计
+```
+
+- **`zmzai-agent`**：模型工具循环。需要本机能力时调用 4 个本机工具（`lib/relay-local-tools.ts`）。
+- **`zmzai-relay`**：云端控制面。校验 Agent 服务密钥与用户有效性，把请求转发给桥（`app/api/internal/agent/local-tool/route.ts`）。
+- **`zmzai-bridge`**：云端桥接端点。终止客户端反向隧道、握手鉴权、`userId → clientId → session → ws` 路由、请求关联、限流、审计收集。
+- **`zmzai-client`**：桌面客户端。本地执行 fs.read/write、shell.exec、notify，风险分级审批 + 追加式审计。
+- **`@zmzai/bridge-protocol`**：client 与 bridge 共同依赖的**协议契约包**，消息格式单一来源。
+
+---
+
+## 4. 协议契约：@zmzai/bridge-protocol
+
+历史上协议在 client 与 bridge 各放一份 `src/shared/protocol.ts`，靠注释约定"逐字节一致"——三次协议升级每次都要两头改。后来把契约收拢成独立包（`zmzai-bridge-protocol` 仓库），两个仓库各留一行 re-export 垫片：
+
+```ts
+// zmzai-client/src/shared/protocol.ts 与 zmzai-bridge/src/shared/protocol.ts
+export * from "@zmzai/bridge-protocol";
+```
+
+**改协议只改一处**，垫片物理上不可能再漂移。
+
+### 4.1 统一信封 Envelope
+
+所有消息包裹在 `z.discriminatedUnion("kind")` 信封里（`src/protocol.ts`）：
+
+| kind | 方向 | 说明 |
+|---|---|---|
+| `hello` | client → cloud | 握手：clientId + userId + nonce + ts + HMAC 签名 |
+| `welcome` | cloud → client | 接受握手：sessionId + userId + nonce 回显 + ECDSA/HMAC 签名 |
+| `tool_request` | cloud → client | 工具调用：id + tool + params + risk |
+| `tool_result` | client → cloud | 执行结果：id 透传 + ok/data/error + audit |
+| `audit_report` | client → cloud | 异步审计上送 |
+| `ping` / `pong` | 双向 | 心跳 |
+
+`id` 全程透传：Agent 可自带 id 关联，客户端回传时原样带回，桥接据此 resolve 对应的 HTTP 请求。
+
+### 4.2 协议版本演进（v1 → v2 → v3）
+
+| 版本 | 变更 | 动机 |
+|---|---|---|
+| v1 | HMAC(clientId:ts) | 最小可用握手 |
+| v2 | hello 携带 `userId`（签名覆盖）| 云端按用户路由——一个用户对应一台机器 |
+| v3 | 携带一次性 `nonce`；welcome 改 **ECDSA(P-256) 私钥签名** | nonce 防重放；非对称验签防伪造云端端点 |
+
+每个版本都配了自包含 E2E（`zmzai-bridge/scripts/e2e.ts`，现 9 项），升级即回归验证。
+
+---
+
+## 5. 桌面客户端 zmzai-client
+
+Electron 三进程架构（`src/main/index.ts` + `src/preload/index.ts` + `src/renderer/`），`contextIsolation + contextBridge` 安全 IPC。
+
+### 5.1 握手（客户端视角）
+
+每次连接生成一次性 `nonce`（`randomBytes(16).hex`），hello 签名覆盖 `clientId:userId:nonce:ts`；收到 welcome 时：
+
+1. 比对 `welcome.nonce === 自己发的 nonce`（防重放，不匹配视为 fatal）；
+2. 若配置了 `BRIDGE_PUBLIC_KEY_PEM`，用云端公钥验签 welcome（`src/bridge/sign.ts` 的 `verifyWelcome`）——**验签失败 = 端点不可信，断开且不再自动重连**。
+
+未配置公钥时跳过验签（仅本机联调）；生产必须配置。
+
+### 5.2 本地能力与路径沙箱
+
+四个能力处理器（`src/bridge/capabilities.ts`）：
+
+- `fs.read`：限 `maxBytes`（默认 200KB，上限 5MB），utf8/base64
+- `fs.write`：受限写入
+- `shell.exec`：默认关闭（`SHELL_ENABLED=false`），开启后逐条审批，带超时
+- `notify`：系统通知
+
+所有路径经 `withinRoots` 校验（`src/bridge/scope.ts`）：限制在用户批准的目录根（`APPROVED_ROOTS`）内，**realpath 解析防符号链接逃逸**。
+
+### 5.3 风险分级审批
+
+| 工具 | 客户端审批 |
+|---|---|
+| `fs.write` | 必须用户授权 |
+| `shell.exec` | 必须用户授权（即便已启用） |
+| `fs.read` | 低风险自动放行；risk=high 时仍需审批 |
+| `notify` | 自动 |
+
+审批弹窗超时（`APPROVAL_TIMEOUT_MS`，默认 120s）**默认拒绝**——不静默放行，也不让请求无限悬置。
+
+### 5.4 审计
+
+每次执行落盘本地 `userData/audit.jsonl`（`src/bridge/audit.ts`），含决策人（auto/user）、风险、耗时；落盘后经 `audit_report` **异步上送云端**，供跨端复盘。
+
+### 5.5 wss 强制
+
+`BRIDGE_URL` 非 `wss://` 且未显式设 `ALLOW_INSECURE_WS=true`（仅本机联调）→ 直接不连；证书校验保持 ws 默认严格。
+
+---
+
+## 6. 云端桥接 zmzai-bridge
+
+### 6.1 握手（云端视角）
+
+`src/bridge/bridge-ws.ts`：校验 hello 签名与时间戳（拒绝 `>HELLO_MAX_AGE_MS` 的重放）→ `registry.register(clientId, userId, ws)` 分配 sessionId → 按配置用 ECDSA 私钥或 HMAC 签 welcome。客户端密钥存 `SecretStore`（`src/bridge/secrets.ts`，当前 env 实现，接口可换 KMS）。
+
+### 6.2 注册表与会话路由
+
+`src/bridge/registry.ts` 维护三个映射：
+
+```
+clients:  clientId → { userId, ws, sessionId, connectedAt, lastSeen }
+sessions: sessionId → clientId
+users:    userId → clientId（一个用户当前在线的客户端，最新连接覆盖）
+```
+
+路由优先级：**按用户（生产主入口）> 按会话 > 按 clientId**。dispatch 时把 `tool_request` 经 ws 下发，客户端回 `tool_result` 后按 `id` resolve 对应 HTTP 请求（pending 带超时）。
+
+### 6.3 内部调度 API
+
+`src/api/server.ts`，Bearer `INTERNAL_API_TOKEN` 鉴权（仅内网可达）：
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| POST | `/v1/users/:userId/tool` | **生产主入口**：按用户路由 |
+| POST | `/v1/sessions/:sessionId/tool` | 按会话 |
+| POST | `/v1/clients/:clientId/tool` | 按客户端 |
+| GET | `/v1/users/:userId` | 用户在线绑定探测 |
+| GET | `/v1/audit` | 审计查询 |
+| GET | `/v1/clients` / `/v1/sessions` | 管理查询 |
+
+错误语义：`409` 客户端离线 / `429` 限流 / `502` 下发失败 / `504` 客户端超时（可能在等审批）。
+
+### 6.4 限流与审计收集
+
+- dispatch 按 clientId 滑动窗口限流（`DISPATCH_RATE_LIMIT_PER_MINUTE`，统一咽喉 `dispatchToClient`）；
+- `audit_report` 进 `AuditSink`（内存 1000 条 + 可选 `AUDIT_FILE_PATH` JSONL 落盘）。
+
+---
+
+## 7. 打通 relay 与 agent
+
+### 7.1 relay：local-tool 端点
+
+`zmzai-relay` 新增 `POST/GET /api/internal/agent/local-tool`（`app/api/internal/agent/local-tool/route.ts`）：
+
+- 鉴权：agent-service 密钥（与 `/internal/agent/chat` 同源）；
+- `userId` 取自 `x-zmzai-agent-user-id` 头，并校验用户存在且激活——防请求发往非授权用户的本机；
+- POST 转发到 bridge `dispatchToUser`；GET 探测用户是否绑定了在线客户端（Agent 据此决定要不要暴露本机工具）。
+
+### 7.2 agent：四个本机工具
+
+`zmzai-agent/lib/relay-local-tools.ts` 定义 4 个 ToolDef（OpenAI function name 不允许 `.`，故 id 用下划线，下发时映射回 `fs.read` 等）：
+
+| 工具 id | 下发到桥 | 能力 |
+|---|---|---|
+| `local_fs_read` | `fs.read` | 读本机文件 |
+| `local_fs_write` | `fs.write` | 写本机文件 |
+| `local_shell_exec` | `shell.exec` | 执行本机命令 |
+| `local_notify` | `notify` | 本机通知 |
+
+通过框架 `SessionRunner` 新增的 `localTools` 注入点接入（`packages/agent-framework/src/core/runtime/runner.ts`），权限走框架统一闸口（`permission: "local"`，pattern 为路径/命令）——**Agent 级权限 + 客户端级审批双保险**。`FW_MODE=local`（无 relay 的本地演示模式）不启用。
+
+---
+
+## 8. 安全模型纵深（从外到内）
+
+1. **wss + 证书校验**（传输层）
+2. **HMAC hello**（身份 + 归属 + nonce 防重放）
+3. **ECDSA welcome 验签**（防伪造云端端点——握手密钥泄露也无法冒充）
+4. **Agent 级权限闸口**（relay/agent 侧 permission engine）
+5. **客户端风险分级审批**（fs.write/shell.exec 必审，超时默认拒绝）
+6. **路径沙箱**（批准根目录内 + 防符号链接逃逸）
+7. **本地审计落盘 + 云端审计收集**（每次执行可复盘）
+
+**核心命题**：云端只做"路由 + 关联 + 鉴权"，不执行业务、不碰用户文件。即使云端被攻破，本地审批与审计仍然兜底。
+
+---
+
+## 9. 生产化边界与演进
+
+已完成：协议 v3 非对称握手、userId 用户路由、relay/agent 打通、dispatch 限流、审计上送、wss 强制、审批超时默认拒绝、协议契约抽包。
+
+**延迟抽象决策**：Redis 多副本横向扩展目前**不做**——`ClientRegistry` 的状态（注册表/归属/pending）都在进程内存，单实例对几十到几百台客户端足够；真要扩，Redis 作为**独立中间件服务**存"注册表 + 实例归属 + 限流计数 + 审计"，dispatch 做跨实例定向转发（客户端协议零改动）。判断标准：共享层收益 = 拷贝份数 × 漂移概率，现在只有一个消费者，内聚最优。
+
+剩余待办：真实机端到端验收（需下载 Electron 二进制跑 GUI 审批交互）、密钥对接 relay apikey 体系、审计加密存储/上链存证。
+
+---
+
+## 10. 已知局限（诚实说明）
+
+- 单实例桥接是单点：实例重启期间客户端自动重连（5s），但未做故障转移；
+- `audit_report` 上送是尽力而为（WS 断开则丢，靠本地 JSONL 兜底）；
+- 一用户一设备：`userId → clientId` 最新连接覆盖，多设备并行会话是后续工作；
+- 审批决策人字段在超时拒绝场景仍记 `user`（语义上应是 `policy`），属已知小瑕疵。
+
+---
+
+配套仓库：[`zmzai-client`](https://github.com/zmzai-cloud/zmzai-client) · [`zmzai-bridge`](https://github.com/zmzai-cloud/zmzai-bridge) · [`zmzai-bridge-protocol`](https://github.com/zmzai-cloud/zmzai-bridge-protocol) · [`zmzai-relay`](https://github.com/zmzai-cloud/zmzai-relay) · [`zmzai-agent`](https://github.com/zmzai-cloud/zmzai-agent)
