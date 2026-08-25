@@ -3,6 +3,7 @@
 > 日期：2026-08-14
 > 范围：`zmzai-agent/packages/agent-framework`（核心框架包）+ `zmzai-agent/lib`（产品接入层）
 > 定位：本文是 zmzai-agent 当前架构的完整技术说明，可作为课程/博客素材。所有设计决策均标注了真实源码位置。
+> 更新：2026-08-25 —— 新增 §6.6 本机工具（local tools）与执行边界说明；对应 client/bridge/protocol/relay 的打通（见 §10.3）。
 
 ---
 
@@ -278,6 +279,8 @@ type ToolDef<TSchema> = {
 
 ### 6.2 八个内置工具（`core/tools/builtins.ts`）
 
+> 框架内置八个 Workspace 工具；另有 **4 个本机工具**由产品层经 `RunnerDeps.localTools` 注入（见 §6.6）——它们操作的是「用户自己的机器」，与 Workspace/沙箱完全不同的执行通道。
+
 | 工具 | 权限 | 模式 | 说明 |
 |---|---|---|---|
 | `read` | read | 并行可 | 读文件（env 文件基线 ask） |
@@ -312,6 +315,35 @@ type ToolDef<TSchema> = {
 - **独立 runner**：子代理用**新的 SessionRunner** 跑（不复用父的 runLoop，否则死锁）
 - **结果回传**：子代理最终 assistant 文本作为 task 工具的 output 返回给父
 - **transcript 链接**：父会话写一条 `subtask` Part，链向 childSessionId
+
+### 6.6 本机工具（local tools）：Agent 操作「用户自己的机器」
+
+内置工具操作的是 **Workspace 文件**（云端后端 = Mongo 聚合视图）。但 Agent 有时需要操作**用户本机**（桌面客户端所在电脑）：本机文件、本机命令、本机通知。这是一条与 Workspace/沙箱完全独立的执行通道：
+
+```
+模型 ──local_fs_read──► zmzai-relay /api/internal/agent/local-tool
+                            │  agent-service 鉴权 + 用户有效性校验
+                            ▼
+                       zmzai-bridge /v1/users/:userId/tool
+                            │  反向隧道 WebSocket（hello/welcome/tool_request）
+                            ▼
+                       zmzai-client（桌面 Electron）→ 本地审批 + 审计 → 执行
+```
+
+**注入方式**：`SessionRunner` 的 `RunnerDeps.localTools`（`core/runtime/runner.ts`）在基础工具之后、workspace 工具之前合并；产品层在 `framework/server/context.ts` 注入 `resolveLocalTools()`（`lib/relay-local-tools.ts`）。`FW_MODE=local`（无 relay 的本地演示）不启用。
+
+**四个工具**（OpenAI function name 不允许 `.`，id 用下划线，下发时映射回 `fs.read` 等）：
+
+| 工具 id | 下发 tool | 能力 | 客户端审批 |
+|---|---|---|---|
+| `local_fs_read` | fs.read | 读本机文件 | 低风险自动 |
+| `local_fs_write` | fs.write | 写本机文件 | 必审 |
+| `local_shell_exec` | shell.exec | 执行本机命令 | 必审（默认关闭） |
+| `local_notify` | notify | 本机通知 | 自动 |
+
+**执行边界（重要）**：`zmzai-sandbox` 的代码/命令在**云端容器内**执行，不经过本机通道；本机通道只服务用户自己的机器。权限走同一 choke point（`permission: "local"`，pattern 为路径/命令），客户端本地审批再叠加一层——**双保险**：即使云端被攻破，也无法绕过客户端审批。
+
+**协议契约**：client ↔ bridge 的 wire 契约（Envelope / 工具 schema / AuditRecord / 协议版本）单一来源在 `@zmzai/bridge-protocol` 共享包，改协议只改一处。
 
 ---
 
@@ -431,6 +463,22 @@ PI Agent ──streamFn──► createRelayStreamFunction({userId, taskRunId})
 - **Workspace**：Mongo 文件后端（read/write/edit 都生成不可变版本 + diff）
 - **Session/Event Store**：Mongo 实现
 
+### 10.3 本机工具桥接（`lib/relay-local-tools.ts`）
+
+本机工具（§6.6）的产品侧实现：`dispatchLocalTool()` 把工具调用 POST 到 relay 的 `/api/internal/agent/local-tool`（agent-service 鉴权 + `x-zmzai-agent-user-id` 头），relay 校验用户有效后转发到 bridge `dispatchToUser`，`probeLocalClient()` 探测用户是否绑定了在线客户端（Agent 据此决定是否暴露本机工具 / 提示用户）。409/504 映射为可读错误；探测对网络故障容错（不打断 Agent 循环）。
+
+链路涉及的全部仓库：
+
+```
+zmzai-agent（本机工具 ToolDef）
+  → zmzai-relay（local-tool 端点：鉴权 + 用户校验）
+  → zmzai-bridge（用户路由 + 限流 + 审计收集，注册表在内存）
+  → @zmzai/bridge-protocol（client↔bridge wire 契约单一来源）
+  → zmzai-client（Electron 桌面：反向隧道 + 审批 + 审计 + 路径沙箱）
+```
+
+**执行边界**：沙箱在云端容器内执行、不经本机通道；本机通道只服务用户机器，客户端审批不可绕过（详见 §6.6）。
+
 ---
 
 ## 11. 设计哲学总结
@@ -443,6 +491,7 @@ PI Agent ──streamFn──► createRelayStreamFunction({userId, taskRunId})
 | **声明式权限** | 工具不调 ask()，返回权限请求，runner 统一评估 |
 | **优雅降级** | workspace agent 解析失败不阻塞；compaction 失败退全量；上游中断自动重试 |
 | **幂等恢复** | lease 过期 + 投影清理，崩溃后不卡死 |
+| **执行边界** | 沙箱在云端执行；本机工具走独立通道（relay→bridge→client），客户端审批兜底 |
 
 ---
 
@@ -484,6 +533,7 @@ loadCustomAgents(workspace): { agents, errors }
 
 // 工具
 builtinTools: ToolDef[]   // read/glob/grep/write/edit/todo/bash/task
+                          // 本机工具（local_fs_read 等 4 个）由产品层经 RunnerDeps.localTools 注入，见 §6.6
 adaptTool(def, ctx): AgentTool   // 框架 ToolDef → PI AgentTool
 
 // 运行时
