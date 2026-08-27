@@ -113,3 +113,16 @@ if (reply === "reject") {
 ## 全课回顾
 
 十期下来，我们拆了六家 harness（Codex、Claude Code、OpenCode、Gemini CLI、Pi、DeepSeek Harness），在沙箱里造了 12 个零件、写了 276 条确定性断言、跑了 9 场真实 LLM 实验。如果只留一句话：**harness 不是模型的外壳，是模型的操作系统——它决定了同样的模型，干出什么样的活。**
+
+---
+
+## 毕业之后：这些零件已经装回主线（2026-08-27 更新）
+
+这期成文时，毕业改造还只装回了三件。到本文更新时，课程里设计的零件已经有一批正式落在 zmzai-agent 主线上：
+
+- **循环防护已落地**：第 3 期的 storm 断路器 + 第 4 期的重复失败守卫，以 `core/runtime/loop-guard.ts` 进入框架——同签名连续失败 3 次注入"改策略"指令、edit 重复失败重试前先复查文件状态，与文中实现的语义一致。
+- **工具结果裁剪已部分落地**：第 1 期的 head/tail 确定性裁剪（70%/25%，带省略标记）进入工具适配器，取代纯硬截断。
+- **缓存计费已打通**：relay 侧解析 `cache_read_input_tokens`，usage 拆 input/output/cacheRead/cacheWrite 四路计费——第 7 期 DeepSeek 的"KV 缓存执念"，在计费面上先落了地。
+- **工具面大幅补齐（课程范围之外）**：git 工具集（git_read/git_write 权限分类）、websearch、apply_patch、交互式终端（pty/管道双模）、MCP 客户端（stdio/streamable-http/sse 三传输）、生命周期钩子四挂点。测试从成文时的 110 条增长到 206+ 条。
+
+仍未落地的：投影式压缩（第 6 期）、子代理写路径隔离（第 7 期）、失败日志按行剪裁（第 1 期后半）。它们是下一批毕业改造的候选——横评是体检表，不是购物清单，装回节奏以真实需求为准。

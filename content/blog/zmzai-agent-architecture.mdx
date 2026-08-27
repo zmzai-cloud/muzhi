@@ -10,6 +10,7 @@ draft: false
 > 范围：`zmzai-agent/packages/agent-framework`（核心框架包）+ `zmzai-agent/lib`（产品接入层）
 > 定位：本文是 zmzai-agent 当前架构的完整技术说明，可作为课程/博客素材。所有设计决策均标注了真实源码位置。
 > 更新：2026-08-25 —— 新增 §6.6 本机工具（local tools）与执行边界说明；对应 client/bridge/protocol/relay 的打通（见 §10.3）。
+> 更新：2026-08-27 —— P0 工具面补齐收官：新增 §4.4 生命周期钩子、§6.7 git 工具集、§6.8 websearch 与 apply_patch、§6.9 交互式终端、§6.10 MCP 三传输客户端；§12 短板清单同步核销。
 
 ---
 
@@ -41,7 +42,7 @@ flowchart TB
         perm["PermissionEngine"]
         comp["Compaction"]
         lease["Lease + FIFO queue"]
-        tools["Tools（8 内置 + 4 本机）"]
+        tools["Tools（内置 20+ / 本机 4<br/>+ MCP 外部工具）"]
         adapters["Adapters（FS / Subproc / OpenAI）"]
         pibridge["PI Bridge（PI 事件 → Part 投影）"]
     end
@@ -166,6 +167,21 @@ message_end             → 关闭 message + step-finish→ message.updated
 
 ---
 
+### 4.4 生命周期钩子（`core/runtime/lifecycle.ts`）
+
+`LifecycleHook` 四挂点，是插件生态的地基——审计、告警、自定义策略不再需要改 runner：
+
+| 挂点 | 时机 | 能力 |
+|---|---|---|
+| `onRunStart` | 一次 run 开始 | 观测 |
+| `onBeforeToolCall` | **权限评估之前**的第一道闸口 | 可 block，并把 reason 反馈给模型 |
+| `onAfterToolCall` | 工具返回后 | 只读观测（被拦截的调用不触发） |
+| `onRunEnd` | ok / aborted 终态 | 观测 |
+
+容错语义：钩子抛错仅告警不中断运行；多个 block 类 hook 首个生效。钩子在权限评估**之前**执行，意味着它比权限规则更早——适合做「无论权限如何都禁止」的硬闸口。
+
+---
+
 ## 5. 权限系统
 
 权限是 agent 安全的命门。zmzai 的设计是**单一闸口 + 分层 ruleset + 三态回复**。
@@ -276,7 +292,7 @@ type ToolDef<TSchema> = {
 
 ### 6.2 八个内置工具（`core/tools/builtins.ts`）
 
-> 框架内置八个 Workspace 工具；另有 **4 个本机工具**由产品层经 `RunnerDeps.localTools` 注入（见 §6.6）——它们操作的是「用户自己的机器」，与 Workspace/沙箱完全不同的执行通道。
+> 框架最初内置八个 Workspace 工具（下表）；此后陆续补齐 webfetch、git×4、websearch、apply_patch、terminal×5（见 §6.7–§6.9），并新增 **MCP 外部工具注入通道**（见 §6.10）。另有 **4 个本机工具**由产品层经 `RunnerDeps.localTools` 注入（见 §6.6）——它们操作的是「用户自己的机器」，与 Workspace/沙箱完全不同的执行通道。
 
 | 工具 | 权限 | 模式 | 说明 |
 |---|---|---|---|
@@ -338,6 +354,45 @@ flowchart LR
 **执行边界（重要）**：`zmzai-sandbox` 的代码/命令在**云端容器内**执行，不经过本机通道；本机通道只服务用户自己的机器。权限走同一 choke point（`permission: "local"`，pattern 为路径/命令），客户端本地审批再叠加一层——**双保险**：即使云端被攻破，也无法绕过客户端审批。
 
 **协议契约**：client ↔ bridge 的 wire 契约（Envelope / 工具 schema / AuditRecord / 协议版本）单一来源在 `@zmzai/bridge-protocol` 共享包，改协议只改一处。
+
+### 6.7 git 工具集（`core/tools/git.ts`）
+
+四个工具把版本控制纳入 Agent 能力面：`git_status`（porcelain 结构化——分支、ahead/behind、暂存/未暂存/未跟踪三组）、`git_diff`（numstat 摘要，支持 staged 与单文件）、`git_log`（空仓库给友好提示）、`git_commit`（paths / addAll / staged 三种暂存语义，无变更时给引导性报错而非模糊失败）。
+
+关键决策：git 工具**直接写真实仓库**而非沙箱快照副本。因此权限拆成两类——`git_read` 默认 allow，`git_write` 默认 ask 且可「总是允许」沉淀为规则（按仓库粒度）。
+
+### 6.8 websearch 与 apply_patch（`core/tools/websearch.ts` / `patch.ts`）
+
+**websearch** 是一个可测试设计样本：`createWebSearchTool` 注入 fetch/env——配置 `TAVILY_API_KEY` / `SERPER_API_KEY` 走对应 API，缺省回退 DuckDuckGo Lite（uddg 重定向还原，零 key 零依赖）。结果归一化为 title/url/snippet；权限复用 webfetch 分类，以 `search:` 前缀区分。
+
+**apply_patch** 解析统一 diff（多文件多 hunk），采用**两阶段应用**：全量试算 → 逐文件落盘，任一失败整体不变更（不留半套补丁）。±300 行漂移容差应对模型行号偏差；新建文件走 `--- /dev/null`；删除明确报错。落盘走 workspace 门面，出不可变版本与 diff（`emitFileEdited`）。权限 = edit，按补丁受影响路径评估。
+
+### 6.9 交互式终端（`core/tools/terminal.ts`）
+
+五个工具：start / read / write / kill / list。`TerminalManager` 每会话一个环形缓冲 + 绝对游标续读 + 头部滚动丢弃计数。
+
+- **start 即返不阻塞**——交互式进程（dev server、watch 模式）不能让 run 卡死
+- **write** 支持 y/n 应答与裸按键（Ctrl+C）
+- **kill** SIGTERM → SIGKILL 兜底
+- **read** 返回终态退出码，防止模型对已退出进程空轮询
+
+后端双模（`adapters/terminal-backend.ts`）：同步 `createRequire` 探测 node-pty（框架 optionalDependencies）→ 真 PTY；不可用降级管道模式（`sh -c` detached 进程组、负 pid 组杀）。一个实测细节：node-pty 的 `onExit` 会把普通退出的 `signal` 报成 0，必须归一化为「无信号」——否则每次 `echo` 都被标成 killed。
+
+权限：新增 `terminal` 分类默认 ask（本机直接起进程，位阶高于沙箱 bash），always 规则按命令前缀沉淀。
+
+### 6.10 MCP 客户端：外部工具注入通道（`core/mcp/`）
+
+框架级 MCP 客户端，三种传输按 `spec.type` 分派：
+
+| 传输 | 实现 | 细节 |
+|---|---|---|
+| stdio | NDJSON JSON-RPC 2.0 子进程 | 超时/进程退出时未决请求全部拒绝不悬挂；SIGTERM→SIGKILL 干净回收 |
+| streamable-http | 单端点 POST | 应答兼容 `application/json` 与 `text/event-stream` 帧；`mcp-session-id` 捕获回传；notifications 走 202 |
+| sse | GET 常开事件流承载数据 | endpoint 握手提示兼容裸路径 / JSON 字符串两种形态 |
+
+装配语义：`startMcpServers` 批量启动，**单个 server 失败不影响其余**。工具命名空间化为 `mcp__<server>__<tool>`，权限映射 `mcp/<server>/<tool>`，`always` 支持按 `<server>/*` 整仓放行；isError 抛错接入既有循环防护（§12 第一行）。
+
+类型系统上新增 `ExternalToolDef`：参数是**原生 JSON Schema**（MCP 上游不给 zod），ToolDef 家族扩展为 `AnyToolDef` 联合，runner 的 tools/localTools 都接受；edit 循环防护按 zod 变体收窄（外部工具不参与语义签名）。`localTools` 每次 run 重读——外部工具支持**运行期变更**（server 中途上下线不用重启会话）。
 
 ---
 
@@ -499,13 +554,13 @@ flowchart TB
 
 | 短板 | 现状 | 改进方向 |
 |---|---|---|
-| **无调用风暴防护** | 模型陷入死循环会烧完 12 步预算 | storm 断路器（按 tool+error 签名，阈值 3 注入"改策略"） |
-| **无工具结果智能裁剪** | 48KB 硬截 | 失败日志按行剪裁（保错误行）+ head/tail 确定性裁剪 |
-| **compaction 重写历史** | 击穿前缀缓存 | 投影式（canonical 不动 + tail 预算 + 不切工具对） |
-| **缓存计费断裂** | relay 不认 cache 字段，agent usage 全 0 | channel 加 cache 属性 + 折扣计费 + agent 解析 cache |
-| **子代理无写路径隔离** | 继承父全部 permission | WritePathSet 声明式写路径 |
+| **调用风暴防护** | **已落地**（P3 循环防护，`loop-guard.ts`）：storm 断路器（tool+归一化错误签名，阈值 3 注入"改策略"）+ blocked streak + edit 重复失败守卫（重试前先复查文件状态） | — |
+| **工具结果智能裁剪** | 部分落地：head/tail 确定性裁剪（70%/25%，带省略标记）已上线 | 失败日志按行剪裁（保错误行） |
+| **compaction 重写历史** | 未解决 | 投影式（canonical 不动 + tail 预算 + 不切工具对） |
+| **缓存计费断裂** | **已落地**：relay-agent-stream 解析 `cache_read_input_tokens`，usage 拆 input/output/cacheRead/cacheWrite 四路计费 | 折算精度随渠道持续校准 |
+| **子代理无写路径隔离** | 未解决 | WritePathSet 声明式写路径 |
 
-这些不是缺陷清单，而是**已经研究清楚、有明确借鉴源（Reasonix/dsh 真实源码）的演进路线**。
+这些不是缺陷清单，而是**已经研究清楚、有明确借鉴源（Reasonix/dsh 真实源码）的演进路线**——前两行已经按这个路线落地，剩下的是下一批。
 
 ---
 
@@ -531,8 +586,10 @@ loadCustomAgents(workspace): { agents, errors }
 
 // 工具
 builtinTools: ToolDef[]   // read/glob/grep/write/edit/todo/bash/task
+                          // + webfetch / git×4 / websearch / apply_patch / terminal×5（§6.7–§6.9）
                           // 本机工具（local_fs_read 等 4 个）由产品层经 RunnerDeps.localTools 注入，见 §6.6
-adaptTool(def, ctx): AgentTool   // 框架 ToolDef → PI AgentTool
+                          // MCP 外部工具经 ExternalToolDef（原生 JSON Schema）注入，见 §6.10
+adaptTool(def, ctx): AgentTool   // 框架 ToolDef → PI AgentTool（接受 AnyToolDef 联合）
 
 // 运行时
 SessionRunner, PartProjector, buildCompactionTransform
@@ -565,3 +622,5 @@ zmzai-agent (Next.js app)
 每一期你跟着敲出一个能跑的模块（约 1000 行 TypeScript），最终拼成一个能读文件、改文件、跑命令、要权限、压缩上下文的 mini coding agent。学完你能读懂任何生产级 agent 框架（zmzai-agent / OpenCode / Reasonix）的核心代码。
 
 👉 **[从零造一个 Coding Agent 框架 · 8 期课程](/courses)**（免费，全部 8 章可读）
+
+两门姊妹篇同样免费：**[Agent 健壮性进阶篇 · 8 期](/courses)**——把上面 §12 的短板清单逐个设计落地（裁剪、去重、断路器、修复管线、投影压缩、子代理隔离、运行恢复）；**[Harness 拆解课 · 10 期](/courses)**——横评 Codex / Claude Code / OpenCode / Gemini CLI / Pi / DeepSeek 七家的真实 harness，最后一期把精华装回 zmzai-agent。
