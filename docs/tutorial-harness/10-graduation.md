@@ -123,6 +123,10 @@ if (reply === "reject") {
 - **循环防护已落地**：第 3 期的 storm 断路器 + 第 4 期的重复失败守卫，以 `core/runtime/loop-guard.ts` 进入框架——同签名连续失败 3 次注入"改策略"指令、edit 重复失败重试前先复查文件状态，与文中实现的语义一致。
 - **工具结果裁剪已部分落地**：第 1 期的 head/tail 确定性裁剪（70%/25%，带省略标记）进入工具适配器，取代纯硬截断。
 - **缓存计费已打通**：relay 侧解析 `cache_read_input_tokens`，usage 拆 input/output/cacheRead/cacheWrite 四路计费——第 7 期 DeepSeek 的"KV 缓存执念"，在计费面上先落了地。
-- **工具面大幅补齐（课程范围之外）**：git 工具集（git_read/git_write 权限分类）、websearch、apply_patch、交互式终端（pty/管道双模）、MCP 客户端（stdio/streamable-http/sse 三传输）、生命周期钩子四挂点。测试从成文时的 110 条增长到 206+ 条。
+- **工具面大幅补齐（课程范围之外）**：git 工具集（git_read/git_write 权限分类）、websearch、apply_patch、交互式终端（pty/管道双模）、MCP 客户端（stdio/streamable-http/sse 三传输）、生命周期钩子四挂点。测试从成文时的 110 条增长到 220+ 条。
+- **遗留候选全部落地（2026-08-27 晚更新）**：本节初版列出的三项候选，当天已全部按进阶课设计装回主线——
+  1. **失败日志按行剪裁**（进阶课第 1 期）：`core/tools/trim.ts` 进入工具适配器。失败结果只留错误行 + 前后 2 行上下文、区间合并插省略标记、8000 字符上限、无错误行降级 head+tail；成功输出照旧走 head+tail。模型看到的是错误现场，不是几千行 pass 噪音。
+  2. **投影式压缩**（进阶课第 6 期）：`compaction.ts` 重写为投影——canonical 历史不可变，闭包持 `{anchor, summary}`，模型看到 `[摘要消息, ...slice(anchor)]`；增量摘要续写（【已有摘要】+ 新折叠段）、滞回带防抖（尾部增量 ≥ 摘要体量一半才再压）、摘要消息固定 `timestamp: 0` 保前缀缓存逐字节命中。膨胀拒绝与失败记忆原样保留。
+  3. **子代理写路径隔离**（进阶课第 7 期）：`core/permission/write-path.ts`。子代理 preset 声明 `writePaths` 即启用：权限层白名单 allow + 全局 edit deny 兜底（LAST match wins），workspace 门面结构性抛错兜不可绕过的第二层；opt-in，未声明的 preset 行为不变。
 
-仍未落地的：投影式压缩（第 6 期）、子代理写路径隔离（第 7 期）、失败日志按行剪裁（第 1 期后半）。它们是下一批毕业改造的候选——横评是体检表，不是购物清单，装回节奏以真实需求为准。
+  三项合计新增 26 条确定性断言，全套 222 条测试通过（唯一失败是 node-pty 在 CI 外沙箱环境的预存问题）。横评是体检表，不是购物清单——但体检表上的项，最终都该装回去。

@@ -432,30 +432,28 @@ interface EventLog {
 
 ## 8. 上下文压缩（Compaction）
 
-当上下文逼近模型窗口时，把旧历史压成摘要（`core/runtime/compaction.ts`）。
+当上下文逼近模型窗口时，把旧历史压成摘要（`core/runtime/compaction.ts`）。2026-08-27 起改为**投影式**（进阶课第 6 期设计）：canonical 历史不可变，压缩只是投影——闭包持有 `{anchor, summary}` 两个状态，模型每次看到的永远是 `[摘要消息, ...messages.slice(anchor)]`。
 
 ```
 transformContext（PI 每次请求前调用）
-  ├─ estimateTokens(messages) ≈ chars/4
-  ├─ tokens + reserve < contextWindow? → 不压，原样返回
-  ├─ 否则：
-  │    head = messages[:-keepRecent]   （keepRecent 默认 8）
-  │    tail = messages[-keepRecent:]
-  │    summary = summaryModel.stream(head + 压缩指令)
-  │    return [{ role:user, "【早期对话摘要】"+summary }, ...tail]
-  └─ 压缩失败 → 降级为全量上下文（不硬失败）
+  ├─ projected = summary ? [摘要消息, ...messages.slice(anchor)] : messages
+  ├─ estimateTokens(projected) + reserve < contextWindow? → 原样返回投影
+  ├─ 滞回带：已有摘要但尾部增量 < 摘要体量的一半 → 不再重摘（防抖动）
+  ├─ 否则增量压缩：
+  │    fold  = messages[anchor : -keepRecent]   （keepRecent 默认 8）
+  │    摘要提示词 = fold + 【已有摘要】旧摘要 + 压缩指令（增量续写，不是重启）
+  │    膨胀拒绝：新摘要 ≥ 被替代内容（fold + 旧摘要）→ 作废，失败记忆
+  │    anchor 前移 → return [摘要消息(timestamp 固定为 0), ...slice(anchor)]
+  └─ 压缩失败 → 降级为当前投影（不硬失败，本轮不再重试）
 ```
 
-压缩发生时，在最近一条 assistant message 上写一个 `compaction` Part 标记边界。**完整压缩前消息仍持久化在 store 里**，只有模型可见上下文被精简。
+压缩发生时，在最近一条 assistant message 上写一个 `compaction` Part 标记边界。**完整历史始终持久化在 store 里**，投影只改变模型可见上下文。摘要消息固定 `timestamp: 0`，两次压缩之间投影前缀逐字节稳定——provider 的前缀 prompt cache 可以持续命中。
 
 ### 已知局限（诚实说明）
 
-当前 compaction 策略较粗：
-- 压缩会**重写历史**（head → 一条摘要消息），这会击穿前缀缓存
+- 投影状态（anchor/summary）在闭包里，每次 runLoop 重建——跨 run 需要重摘一次；跨 run 持久化留待后续
 - 只在「超窗」时整体触发，没有按工具结果大小的细粒度压缩
-- 没有并发锁 / 稳定性检查
-
-这些是对照 DeepSeek-Reasonix / deepseek-harness 后明确的改进方向（投影式 compaction、不切工具调用对、摘要必须更小才提交）。
+- 摘要质量依赖小模型，没有并发锁 / 稳定性检查
 
 ---
 
@@ -555,12 +553,12 @@ flowchart TB
 | 短板 | 现状 | 改进方向 |
 |---|---|---|
 | **调用风暴防护** | **已落地**（P3 循环防护，`loop-guard.ts`）：storm 断路器（tool+归一化错误签名，阈值 3 注入"改策略"）+ blocked streak + edit 重复失败守卫（重试前先复查文件状态） | — |
-| **工具结果智能裁剪** | 部分落地：head/tail 确定性裁剪（70%/25%，带省略标记）已上线 | 失败日志按行剪裁（保错误行） |
-| **compaction 重写历史** | 未解决 | 投影式（canonical 不动 + tail 预算 + 不切工具对） |
+| **工具结果智能裁剪** | **已落地**（2026-08-27）：head/tail 确定性裁剪（70%/25%，带省略标记）+ 失败日志按行剪裁（只留错误行 + 前后上下文、区间合并插省略标记、8000 字符上限、无错误行降级 head+tail），按结果状态 failed/succeeded 分流 | — |
+| **compaction 重写历史** | **已落地**（2026-08-27 投影式改造）：canonical 不可变，投影 = [摘要?, slice(anchor)]；增量摘要续写、滞回带防抖、摘要消息 timestamp 固定为 0 保前缀缓存命中 | 跨 run 投影状态持久化 |
 | **缓存计费断裂** | **已落地**：relay-agent-stream 解析 `cache_read_input_tokens`，usage 拆 input/output/cacheRead/cacheWrite 四路计费 | 折算精度随渠道持续校准 |
-| **子代理无写路径隔离** | 未解决 | WritePathSet 声明式写路径 |
+| **子代理无写路径隔离** | **已落地**（2026-08-27 WritePathSet）：`AgentInfo.writePaths` 声明式白名单，权限层 allow+全局 deny 兕底（LAST match wins）+ workspace 门面结构性抛错双层防御；opt-in，未声明的 preset 行为不变 | bash 沙箱侧的同粒度圈禁 |
 
-这些不是缺陷清单，而是**已经研究清楚、有明确借鉴源（Reasonix/dsh 真实源码）的演进路线**——前两行已经按这个路线落地，剩下的是下一批。
+这些不是缺陷清单，而是**已经研究清楚、有明确借鉴源（Reasonix/dsh 真实源码）的演进路线**——主表五项已全部落地（2026-08-27），剩余的是下一批细粒度方向（跨 run 摘要持久化、沙箱侧写路径圈禁等）。
 
 ---
 
