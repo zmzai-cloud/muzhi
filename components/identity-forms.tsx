@@ -92,7 +92,7 @@ export function RegisterForm() {
           type="password"
         />
         <span className="font-normal text-[var(--color-muted)]">
-          至少 12 位，同时包含字母和数字。
+          至少 8 位，同时包含字母和数字。
         </span>
       </label>
       <p aria-live="polite" className="text-sm text-[var(--color-muted)]">

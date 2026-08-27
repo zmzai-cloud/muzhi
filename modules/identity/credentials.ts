@@ -11,7 +11,7 @@ export const emailSchema = z
 
 export const passwordSchema = z
   .string()
-  .min(12, "密码至少需要 12 位")
+  .min(8, "密码至少需要 8 位")
   .max(128, "密码不能超过 128 位")
   .refine((value) => /[a-zA-Z]/.test(value) && /\d/.test(value), {
     message: "密码必须同时包含字母和数字",

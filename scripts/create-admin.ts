@@ -60,7 +60,7 @@ main()
   .catch((error: unknown) => {
     if (error instanceof z.ZodError) {
       console.error(
-        "用法：npm run create-admin -- --name \"Admin\" --email admin@example.com --password \"至少12位且包含字母和数字\"",
+        "用法：npm run create-admin -- --name \"Admin\" --email admin@example.com --password \"至少8位且包含字母和数字\"",
       );
       for (const issue of error.issues) {
         console.error(`- ${issue.path.join(".")}: ${issue.message}`);
