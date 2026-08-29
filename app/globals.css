@@ -10,9 +10,9 @@
    Token 统一来自包；代码中原裸变量 var(--page/--ink/--accent 等)
    已全部改为包 token 名（--color-*）。
 
-   muzhi 唯一的有意偏离：内容站需要可发现的链接色，因此把
-   accent-readable 覆盖为品牌绿（正文/链接专用），结构色仍走墨黑。
-   这是设计决策，不是遗漏——工具站不要照抄。 */
+   muzhi 唯一的有意偏离：内容站需要可发现的链接色。v0.8.3 起品牌色为
+   全墨（#16181C），accent-readable 跟随 brand = 墨黑——链接靠下划线与
+   hover 反馈区分（同 Stripe 文档做法），不再需要彩色。结构色仍走墨黑。 */
 
 @theme {
   --radius-input: 3px;
