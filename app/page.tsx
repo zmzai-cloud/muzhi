@@ -183,7 +183,7 @@ export default async function HomePage() {
                 <article
                   className={
                     index === 0
-                      ? "flex flex-col bg-[var(--color-accent)] p-8 sm:p-10"
+                      ? "flex flex-col bg-[var(--color-accent)] p-8 sm:p-10 text-[var(--color-accent-ink)]"
                       : "flex flex-col bg-[var(--color-paper)] p-8 sm:p-10"
                   }
                   key={product.id}
@@ -229,7 +229,7 @@ export default async function HomePage() {
                 {recentPosts.map((post) => (
                   <li key={post.slug}>
                     <Link
-                      className="focus-ring group flex h-full flex-col bg-[var(--color-paper)] p-7 transition-colors hover:bg-[var(--color-accent)]"
+                      className="focus-ring group flex h-full flex-col bg-[var(--color-bg)] p-7 transition-colors hover:bg-[var(--color-surface-2)]"
                       href={`/blog/${post.slug}`}
                     >
                       <time className="eyebrow text-[var(--color-muted)]">

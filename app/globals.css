@@ -5,25 +5,24 @@
 /* theme 组件源码参与 Tailwind 扫描（消费端三件套之二） */
 @source "../node_modules/@zmzai/theme/src/**/*.{ts,tsx}";
 
-/* zmzai 牧之 — 与 hub 等 6 站统一：纯白纸底 + 荧光绿 accent + MiSans。
-   不跟随系统深色——印刷品没有深色版。
-   Token 统一来自 @zmzai/theme（v0.6.0 起纯白+荧光绿）；代码中原裸变量
-   var(--page/--ink/--accent 等) 已全部改为包 token 名（--color-*）。
-   仅保留包内没有的特有变量与覆盖项。 */
+/* zmzai 牧之 — 与 hub 等姊妹站共用 @zmzai/theme（v0.8.0 墨骨：
+   墨黑结构 + 绿色语义）。不跟随系统深色——印刷品没有深色版。
+   Token 统一来自包；代码中原裸变量 var(--page/--ink/--accent 等)
+   已全部改为包 token 名（--color-*）。
+
+   muzhi 唯一的有意偏离：内容站需要可发现的链接色，因此把
+   accent-readable 覆盖为品牌绿（正文/链接专用），结构色仍走墨黑。
+   这是设计决策，不是遗漏——工具站不要照抄。 */
 
 @theme {
-  /* 覆盖包默认值（muzhi 定制） */
-  --font-sans: "MiSans", "PingFang SC", "Hiragino Sans GB",
-    "Microsoft YaHei", system-ui, sans-serif;
-  --radius-input: 0px;
-  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --radius-input: 3px;
+  --color-accent-readable: var(--color-brand);
 }
 
 :root {
   color-scheme: light;
-  /* muzhi 特有（包内没有）：正文可读强调色 + 阴影 */
-  --accent-readable: oklch(0.55 0.170 145);
-  --shadow: oklch(0.15 0.010 30 / 0.08);
+  /* 沿用历史写法 text-[var(--accent-readable)] 的位置 */
+  --accent-readable: var(--color-brand);
 }
 
 /* 基础元素样式必须放进 @layer base：无 layer 的 CSS 会压过 Tailwind
